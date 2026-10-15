@@ -40,7 +40,7 @@ jobs:
         run: psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -f initial-schema.sql
       - name: Verify critical tenant constraints exist
         run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
             IF NOT EXISTS (
