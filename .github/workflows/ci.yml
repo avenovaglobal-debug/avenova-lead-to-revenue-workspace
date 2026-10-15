@@ -40,10 +40,10 @@ jobs:
         run: psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -f initial-schema.sql
       - name: Verify critical tenant constraints exist
         run: |
-          psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -c "SELECT conname FROM pg_constraint WHERE conname IN ('Lead_stageId_organisationId_fkey', 'Activity_leadId_organisationId_fkey', 'Account_providerId_accountId_key') ORDER BY conname" > constraints.txt
-          grep -q 'Lead_stageId_organisationId_fkey' constraints.txt
-          grep -q 'Activity_leadId_organisationId_fkey' constraints.txt
-          grep -q 'Account_providerId_accountId_key' constraints.txt
+          psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -c "SELECT conname || ':' || pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid IN ('\"Lead\"'::regclass, '\"Activity\"'::regclass, '\"Account\"'::regclass) ORDER BY conname" > constraints.txt
+          grep -E 'FOREIGN KEY \("stageId", "organisationId"\).*REFERENCES "PipelineStage"\("id", "organisationId"\)' constraints.txt
+          grep -E 'FOREIGN KEY \("leadId", "organisationId"\).*REFERENCES "Lead"\("id", "organisationId"\)' constraints.txt
+          grep -E 'UNIQUE \("providerId", "accountId"\)' constraints.txt
       - uses: actions/upload-artifact@v4
         with:
           name: generated-initial-schema-sql
