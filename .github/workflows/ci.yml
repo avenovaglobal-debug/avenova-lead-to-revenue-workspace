@@ -1,0 +1,115 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: avenova_workspace
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d avenova_workspace"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/avenova_workspace?schema=public
+      BETTER_AUTH_SECRET: ci-only-secret-that-is-not-used-outside-tests-123456789
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run db:generate
+      - name: Generate initial schema SQL for review
+        run: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > initial-schema.sql
+      - name: Apply generated schema to ephemeral PostgreSQL
+        run: psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -f initial-schema.sql
+      - name: Verify critical tenant constraints exist
+        run: |
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conrelid = '"Lead"'::regclass
+                AND contype = 'f'
+                AND pg_get_constraintdef(oid) LIKE '%("stageId", "organisationId") REFERENCES "PipelineStage"(id, "organisationId")%'
+            ) THEN
+              RAISE EXCEPTION 'Lead must reference a pipeline stage within the same organisation';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conrelid = '"Activity"'::regclass
+                AND contype = 'f'
+                AND pg_get_constraintdef(oid) LIKE '%("leadId", "organisationId") REFERENCES "Lead"(id, "organisationId")%'
+            ) THEN
+              RAISE EXCEPTION 'Activity must reference a lead within the same organisation';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_indexes
+              WHERE schemaname = 'public'
+                AND tablename = 'Account'
+                AND indexdef LIKE '%UNIQUE INDEX%'
+                AND indexdef LIKE '%("providerId", "accountId")%'
+            ) THEN
+              RAISE EXCEPTION 'Account provider/account pair must be unique';
+            END IF;
+          END $$;
+          SQL
+      - name: Prove cross-organisation references are rejected
+        run: |
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO "Organisation" ("id", "name", "slug", "updatedAt")
+          VALUES ('org-a', 'Organisation A', 'organisation-a', NOW()),
+                 ('org-b', 'Organisation B', 'organisation-b', NOW());
+          INSERT INTO "User" ("id", "email", "updatedAt")
+          VALUES ('user-a', 'user-a@example.test', NOW());
+          INSERT INTO "PipelineStage" ("id", "organisationId", "name", "order", "updatedAt")
+          VALUES ('stage-a', 'org-a', 'New', 1, NOW()),
+                 ('stage-b', 'org-b', 'New', 1, NOW());
+          INSERT INTO "Lead" ("id", "organisationId", "createdById", "stageId", "name", "updatedAt")
+          VALUES ('lead-a', 'org-a', 'user-a', 'stage-a', 'Valid lead', NOW());
+
+          DO $$
+          BEGIN
+            BEGIN
+              INSERT INTO "Lead" ("id", "organisationId", "createdById", "stageId", "name", "updatedAt")
+              VALUES ('invalid-lead', 'org-a', 'user-a', 'stage-b', 'Cross-org stage', NOW());
+              RAISE EXCEPTION 'Cross-organisation pipeline stage reference was incorrectly accepted';
+            EXCEPTION WHEN foreign_key_violation THEN
+              RAISE NOTICE 'PASS: cross-organisation pipeline stage reference rejected';
+            END;
+
+            BEGIN
+              INSERT INTO "Activity" ("id", "organisationId", "leadId", "createdById", "type", "body")
+              VALUES ('invalid-activity', 'org-b', 'lead-a', 'user-a', 'NOTE', 'Cross-org activity');
+              RAISE EXCEPTION 'Cross-organisation activity-to-lead reference was incorrectly accepted';
+            EXCEPTION WHEN foreign_key_violation THEN
+              RAISE NOTICE 'PASS: cross-organisation activity-to-lead reference rejected';
+            END;
+          END $$;
+          SQL
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-initial-schema-sql
+          path: initial-schema.sql
+          retention-days: 7
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
