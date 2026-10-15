@@ -101,7 +101,7 @@ model Lead {
   nextFollowUpAt   DateTime?
   organisation     Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   createdBy        User           @relation("LeadCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  stage            PipelineStage? @relation(fields: [stageId, organisationId], references: [id, organisationId], onDelete: SetNull)
+  stage            PipelineStage? @relation(fields: [stageId, organisationId], references: [id, organisationId], onDelete: Restrict)
   activities       Activity[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
