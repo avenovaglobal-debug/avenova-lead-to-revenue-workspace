@@ -25,6 +25,10 @@ Do not deploy with customer data until all of the following are implemented and 
 
 Never trust an organisation ID supplied by the browser without verifying membership server-side. Do not create public lead CRUD routes before authentication is implemented.
 
+## Authentication implementation plan
+
+The proposed provider integration, schema-preservation constraints, required security tests, and release gates are documented in [`docs/AUTHENTICATION-AND-TENANT-ISOLATION.md`](docs/AUTHENTICATION-AND-TENANT-ISOLATION.md). This is a plan only; authentication is still not implemented.
+
 ## Cost policy
 
 No paid provider or subscription has been selected or authorised. Recommend options and obtain approval before any paid commitment, upgrade, or subscription.
