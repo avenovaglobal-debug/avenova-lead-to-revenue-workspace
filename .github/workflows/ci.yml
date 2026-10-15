@@ -8,6 +8,20 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: avenova_workspace
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d avenova_workspace"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/avenova_workspace?schema=public
       BETTER_AUTH_SECRET: ci-only-secret-that-is-not-used-outside-tests-123456789
@@ -20,6 +34,21 @@ jobs:
           node-version: 20
       - run: npm install
       - run: npm run db:generate
+      - name: Generate initial schema SQL for review
+        run: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > initial-schema.sql
+      - name: Apply generated schema to ephemeral PostgreSQL
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f initial-schema.sql
+      - name: Verify critical tenant constraints exist
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT conname FROM pg_constraint WHERE conname IN ('Lead_stageId_organisationId_fkey', 'Activity_leadId_organisationId_fkey', 'Account_providerId_accountId_key') ORDER BY conname" > constraints.txt
+          grep -q 'Lead_stageId_organisationId_fkey' constraints.txt
+          grep -q 'Activity_leadId_organisationId_fkey' constraints.txt
+          grep -q 'Account_providerId_accountId_key' constraints.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-initial-schema-sql
+          path: initial-schema.sql
+          retention-days: 7
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
