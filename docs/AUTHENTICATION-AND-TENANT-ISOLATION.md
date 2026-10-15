@@ -4,7 +4,7 @@
 
 ## Provider decision
 
-Use Better Auth as the initial open-source authentication candidate, with the existing PostgreSQL database and Prisma adapter. This is a proposed engineering choice, not a claim that the provider is configured or production-ready. Reconfirm compatibility against the installed package versions before implementation.
+Use Better Auth as the initial open-source authentication candidate, with the existing PostgreSQL database and Prisma adapter. This is a proposed engineering choice, not a claim that the provider is configured or production-ready. The current repository uses Prisma 6, while the latest official setup guides are written primarily for Prisma 7; Better Auth's Prisma adapter documentation states that Prisma 6 or earlier can retain the existing Prisma Client setup. Therefore, keep the current Prisma 6 stack for this phase and verify the actual dependency/API combination in CI before enabling auth flows.
 
 Official references:
 - Better Auth Prisma adapter: https://better-auth.com/docs/adapters/prisma
@@ -25,12 +25,12 @@ No paid service or subscription is authorised by this decision.
 
 ## Required implementation sequence
 
-- [ ] Add and pin the compatible authentication dependency.
+- [ ] Add and pin the compatible authentication dependency. Prefer a reproducible lockfile and review dependency changes in CI.
 - [ ] Add the auth configuration and Next.js route handler.
 - [ ] Integrate required auth tables and user-field mappings into the existing Prisma schema without losing domain relations.
 - [ ] Generate and review a migration; do not apply it to a production database without explicit review.
 - [ ] Implement server-verified session retrieval in `src/lib/auth/authorization.ts`.
-- [ ] Add sign-up/sign-in/sign-out and account recovery flows with appropriate validation and generic error handling.
+- [ ] Decide and configure email verification and password-reset delivery before enabling public email/password registration. Do not advertise a registration flow that cannot securely verify email or recover accounts.
 - [ ] Add organisation creation and owner membership creation in one transaction, with a safe onboarding boundary.
 - [ ] Require verified organisation context and role checks for all protected server actions and route handlers.
 - [ ] Add tests for anonymous requests, invalid sessions, missing membership, wrong-organisation reads and writes, role boundaries, and valid member access.
@@ -39,4 +39,4 @@ No paid service or subscription is authorised by this decision.
 
 ## Release gate
 
-Authentication is not complete merely because a sign-in page renders or CI passes. Release requires working server-side session verification, reviewed migrations, tenant-isolation negative tests, and end-to-end verification. Until those exist, keep the product an engineering preview and do not store real customer data.
+Authentication is not complete merely because a sign-in page renders or CI passes. The existing Prisma 6 schema has a custom User model and tenant-domain relations; provider-generated schema must be reconciled manually rather than blindly overwriting it. Release requires working server-side session verification, reviewed migrations, tenant-isolation negative tests, and end-to-end verification. Until those exist, keep the product an engineering preview and do not store real customer data.
