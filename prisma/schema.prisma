@@ -31,12 +31,15 @@ enum ActivityType {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  displayName  String?
-  memberships  Membership[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  email         String       @unique
+  displayName   String?
+  memberships   Membership[]
+  createdLeads  Lead[]       @relation("LeadCreatedBy")
+  activities    Activity[]   @relation("ActivityCreatedBy")
+  auditEvents   AuditEvent[] @relation("AuditActor")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model Organisation {
@@ -76,13 +79,14 @@ model PipelineStage {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  @@unique([id, organisationId])
   @@unique([organisationId, name])
   @@unique([organisationId, order])
   @@index([organisationId, order])
 }
 
 model Lead {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   organisationId   String
   createdById      String
   stageId          String?
@@ -91,16 +95,18 @@ model Lead {
   email            String?
   phone            String?
   source           String?
-  estimatedValue   Decimal?     @db.Decimal(12, 2)
-  currency         String       @default("NGN")
-  status           LeadStatus   @default(NEW)
+  estimatedValue   Decimal?       @db.Decimal(12, 2)
+  currency         String         @default("NGN")
+  status           LeadStatus     @default(NEW)
   nextFollowUpAt   DateTime?
-  organisation     Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
-  stage            PipelineStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  organisation     Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  createdBy        User           @relation("LeadCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  stage            PipelineStage? @relation(fields: [stageId, organisationId], references: [id, organisationId], onDelete: SetNull)
   activities       Activity[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
+  @@unique([id, organisationId])
   @@index([organisationId, status, updatedAt])
   @@index([organisationId, nextFollowUpAt])
   @@index([organisationId, stageId])
@@ -115,7 +121,8 @@ model Activity {
   body           String
   occurredAt     DateTime     @default(now())
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
-  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead           Lead         @relation(fields: [leadId, organisationId], references: [id, organisationId], onDelete: Cascade)
+  createdBy      User         @relation("ActivityCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   createdAt      DateTime     @default(now())
 
   @@index([organisationId, leadId, occurredAt])
@@ -130,6 +137,7 @@ model AuditEvent {
   entityId       String
   metadata       Json?
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  actor          User         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
   createdAt      DateTime     @default(now())
 
   @@index([organisationId, createdAt])
