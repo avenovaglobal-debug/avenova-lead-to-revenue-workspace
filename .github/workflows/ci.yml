@@ -40,11 +40,38 @@ jobs:
         run: psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -f initial-schema.sql
       - name: Verify critical tenant constraints exist
         run: |
-          psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -At -c "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid IN ('\"Lead\"'::regclass, '\"Activity\"'::regclass, '\"Account\"'::regclass) ORDER BY conname" > constraints.txt
-          cat constraints.txt
-          grep -E 'FOREIGN KEY.*stageId.*organisationId.*REFERENCES.*PipelineStage' constraints.txt
-          grep -E 'FOREIGN KEY.*leadId.*organisationId.*REFERENCES.*Lead' constraints.txt
-          grep -E 'UNIQUE.*providerId.*accountId' constraints.txt
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conrelid = '"Lead"'::regclass
+                AND contype = 'f'
+                AND pg_get_constraintdef(oid) LIKE '%("stageId", "organisationId") REFERENCES "PipelineStage"(id, "organisationId")%'
+            ) THEN
+              RAISE EXCEPTION 'Lead must reference a pipeline stage within the same organisation';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conrelid = '"Activity"'::regclass
+                AND contype = 'f'
+                AND pg_get_constraintdef(oid) LIKE '%("leadId", "organisationId") REFERENCES "Lead"(id, "organisationId")%'
+            ) THEN
+              RAISE EXCEPTION 'Activity must reference a lead within the same organisation';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_indexes
+              WHERE schemaname = 'public'
+                AND tablename = 'Account'
+                AND indexdef LIKE '%UNIQUE INDEX%'
+                AND indexdef LIKE '%("providerId", "accountId")%'
+            ) THEN
+              RAISE EXCEPTION 'Account provider/account pair must be unique';
+            END IF;
+          END $$;
+          SQL
       - uses: actions/upload-artifact@v4
         with:
           name: generated-initial-schema-sql
