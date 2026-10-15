@@ -48,7 +48,7 @@ describe("tenant-scoped lead service", () => {
       lead: { create: vi.fn().mockResolvedValue(lead) },
       auditEvent: { create: vi.fn().mockResolvedValue({ id: "audit-a" }) },
     };
-    mocks.transaction.mockImplementation(async (callback: (tx: typeof tx) => unknown) => callback(tx));
+    mocks.transaction.mockImplementation(async (callback: (transaction: unknown) => unknown) => callback(tx));
 
     const input = {
       name: "Example lead",
