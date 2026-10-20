@@ -1,27 +1,28 @@
 # Dependency Security Remediation
 
-Status: open release blocker. This checklist does not certify the current dependency tree as safe.
+Status: active remediation; release remains blocked pending current CI results and deployment setup.
 
-## Required inputs
+## Findings and changes
 
-- [ ] Generate and commit `package-lock.json` using the project's supported Node/npm toolchain.
-- [ ] Preserve the audit JSON from the latest CI run and identify each direct/transitive advisory, affected package, dependency path, severity, and patched version.
-- [ ] Confirm the lockfile is reproducible with `npm ci`.
+- The previous audit artifact reported high-severity advisories involving `postcss` and `deepmerge-ts`, plus a moderate Next.js-related finding. That artifact's generated lockfile did not match the current scaffold manifest, so it is not a reliable basis for declaring the current branch safe.
+- The remediation branch upgrades Next.js from `^15.5.28` to `^16.4.2`, the patched version identified by that earlier audit report. This is a major-version upgrade and must pass the full CI suite before merge.
+- Prisma is pinned at `7.10.1` on the scaffold branch. The earlier report identifies `7.10.1` as the patched release for the reported Prisma advisory, but the current dependency tree must still be audited.
 
-## Remediation procedure
+## Required verification
 
-1. Start from the committed lockfile and run `npm audit --json`; retain the report as a CI artifact.
-2. For each high/critical advisory, inspect the advisory range and patched release. Trace whether it is direct or transitive.
-3. Prefer the smallest compatible upgrade. Review changelogs and breaking changes before any major-version upgrade.
-4. Regenerate the lockfile with the selected package changes; inspect the diff for unrelated dependency churn.
-5. Run `npm ci`, `npm run db:generate`, `npm run typecheck`, `npm test`, migration/tenant-isolation checks, and `npm run build`.
-6. Run the audit again. The security gate may pass only when no high/critical advisory remains, or when a documented, reviewed exception is explicitly approved. Do not suppress findings merely to make CI green.
-7. Ensure CI uses the committed lockfile and `npm ci`; remove CI steps that create a transient lockfile as an artifact in place of a committed one.
+- [ ] Obtain a current audit report generated from the exact commit under review.
+- [ ] Commit a lockfile generated from the current `package.json`; verify it matches the manifest.
+- [ ] Confirm reproducible installation with `npm ci` after the lockfile is committed.
+- [ ] Inspect all direct and transitive advisories, patched versions, and dependency paths.
+- [ ] Run `npm run db:generate`, `npm run typecheck`, `npm test`, migration/tenant-isolation checks, and `npm run build`.
+- [ ] Run `npm audit --audit-level=high` against the same committed dependency tree.
+- [ ] Update CI to consume the committed lockfile with `npm ci`, not silently regenerate a transient lockfile each run.
+- [ ] Confirm the production deployment target and required environment variables before release.
 
 ## Release rule
 
-Do not merge or deploy this scaffold with customer data while the high-severity dependency gate is failing. Do not enable public registration until email verification, account recovery, and authentication end-to-end tests are complete.
+Do not release this scaffold as a production customer-data service while dependency security or authentication/tenant-isolation gates are failing. Do not enable public registration until email verification, account recovery, and authentication end-to-end tests are complete. Never suppress findings merely to make CI green.
 
 ## Current limitations
 
-The latest recorded CI summary reports quality checks passing but the dependency audit failing. The exact advisory list and a committed lockfile still need to be retrieved/generated before selecting package versions. No package upgrade is declared complete by this document.
+A previous CI run reported quality checks passing but the dependency security gate failing. A Next.js upgrade has now been proposed on this branch; it is not considered complete until current CI and audit results confirm it. The project is not yet confirmed as deployed, and the connected Vercel account currently exposes no teams or projects to this workspace.
