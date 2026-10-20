@@ -28,3 +28,8 @@ The report metadata counted one moderate and four high vulnerability records, wi
 ## Release status
 
 **Release gate: blocked pending review and remediation.** This document records the observed audit output; it does not mean vulnerabilities have been fixed. No production database, billing, customer data, or deployment was configured at the time of this audit.
+## Follow-up CI result — run #36
+
+On commit `ec051c3bd3072ef19d8a7116815ce055f329ddce`, the quality job passed, including Prisma client generation, ephemeral PostgreSQL migration deployment, tenant-consistency constraint checks, cross-organisation reference rejection, TypeScript type-checking, Vitest tests, and the production build. The separate `npm audit --audit-level=high` security job failed, confirming that high-severity advisories remain in the dependency tree at that commit. This is an enforced release gate, not evidence of remediation.
+
+The pull request remains a draft and has not been merged or deployed. Next implementation work should focus on compatibility-tested dependency updates and a committed lockfile before changing CI to `npm ci`. Do not claim the dependency risk is resolved until a fresh audit and the full quality job pass on the updated dependency set.
