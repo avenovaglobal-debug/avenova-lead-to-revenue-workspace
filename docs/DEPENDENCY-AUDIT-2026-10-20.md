@@ -33,8 +33,14 @@ The report metadata counted one moderate and four high vulnerability records, wi
 On commit `ec051c3bd3072ef19d8a7116815ce055f329ddce`, the quality job passed, including Prisma client generation, ephemeral PostgreSQL migration deployment, tenant-consistency constraint checks, cross-organisation reference rejection, TypeScript type-checking, Vitest tests, and the production build. The separate `npm audit --audit-level=high` security job failed, confirming that high-severity advisories remain in the dependency tree at that commit. This is an enforced release gate, not evidence of remediation.
 
 The pull request remains a draft and has not been merged or deployed. Next implementation work should focus on compatibility-tested dependency updates and a committed lockfile before changing CI to `npm ci`. Do not claim the dependency risk is resolved until a fresh audit and the full quality job pass on the updated dependency set.
-## Remediation attempt — PostCSS override
+## Verified follow-up CI result — runs #38 and #39
 
-Commit `838f79302c356461774cce41cd61164cf5f961eb` adds an npm override requesting PostCSS `^8.5.23`, which is newer than the vulnerable versions identified in the August 2026 source-map advisories. This is a targeted dependency-resolution change, not yet a verified fix: the GitHub Actions audit and full quality job must complete before its outcome is assessed.
+Commit `838f79302c356461774cce41cd61164cf5f961eb` added an npm override requesting PostCSS `^8.5.23`. CI run #38 completed the quality job successfully, including database migration checks, tenant constraints, type-checking, tests, and production build. The dependency security gate still failed. Its captured audit report lists **3 high-severity vulnerability records and 0 moderate/critical records**, all associated with the Prisma 6 / `@prisma/config` / `deepmerge-ts` dependency path. PostCSS no longer appears in that captured report, so the override appears to have cleared the previously reported PostCSS findings for that resolution; it does not resolve the remaining Prisma advisories.
 
-The Prisma/\`deepmerge-ts\` high-severity finding remains unresolved. Do not treat this commit as a complete security remediation. The repository still has no committed `package-lock.json`; the generated lockfile artifact is not a substitute for a versioned lockfile.
+CI run #39 also completed its quality job successfully, but its dependency security gate failed. The current security blocker is the Prisma / `@prisma/config` / `deepmerge-ts` path.
+
+The audit report suggests Prisma `7.10.1`, a major-version upgrade from Prisma 6. Treat this as a compatibility migration, not a blind version bump: inspect the Prisma 7 migration guide and adapter compatibility, check schema/config changes, regenerate the client, and rerun migration, tenant-isolation, type-check, test, and production-build checks before accepting it.
+
+The repository still has no committed `package-lock.json`; the generated lockfile artifact is not a substitute for a versioned lockfile. Add and validate a committed lockfile before switching CI from `npm install` to reproducible `npm ci`.
+
+**Release status remains blocked.** The workspace has not been merged or deployed, and the remaining high-severity findings must be remediated and verified before production use.
