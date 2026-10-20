@@ -19,7 +19,7 @@ export default function HomePage() {
         <h1>Fewer lost enquiries.<br /><span>More intentional follow-up.</span></h1>
         <p className="intro">A focused workspace concept for service businesses that need a clearer way to track enquiries, opportunities, and the next action. Product demand is still being validated; this is not a live customer service.</p>
         <div className="hero-actions">
-          <a className="primary-link" href="#product-principles">Explore the product direction <span aria-hidden="true">↗</span></a>
+          <a className="primary-link" href="/dashboard">Open workspace dashboard <span aria-hidden="true">↗</span></a><a className="secondary-link" href="/sign-in">Restricted sign-in</a><a className="secondary-link" href="#product-principles">Explore the product direction</a>
           <span className="safe-note">No sign-in or data collection is enabled.</span>
         </div>
       </section>

@@ -12,9 +12,16 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
   emailAndPassword: {
-    enabled: false,
+    // Keep disabled by default. Only enable after a founder account and organisation
+    // have been provisioned and the release gates are reviewed.
+    enabled: process.env.AVENOVA_ENABLE_PASSWORD_SIGNIN === "true",
+    disableSignUp: true,
+    minPasswordLength: 12,
+    maxPasswordLength: 128,
   },
   trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
     ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean)
-    : ["http://localhost:3000"],
+    : process.env.BETTER_AUTH_URL
+      ? [process.env.BETTER_AUTH_URL]
+      : ["http://localhost:3000"],
 });

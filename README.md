@@ -27,7 +27,11 @@ Never trust an organisation ID supplied by the browser without verifying members
 
 ## Authentication implementation plan
 
-The current Better Auth foundation, schema-preservation constraints, remaining security tests, and release gates are documented in [`docs/AUTHENTICATION-AND-TENANT-ISOLATION.md`](docs/AUTHENTICATION-AND-TENANT-ISOLATION.md). Session verification is implemented on the feature branch, but migrations, account recovery, tenant-isolation tests, and production configuration remain incomplete.
+The current Better Auth foundation, schema-preservation constraints, remaining security tests, and release gates are documented in [`docs/AUTHENTICATION-AND-TENANT-ISOLATION.md`](docs/AUTHENTICATION-AND-TENANT-ISOLATION.md). A restricted sign-in screen and readiness endpoint are now present. Password sign-in remains **off by default** and public sign-up is disabled.
+
+To keep sign-in disabled, leave `AVENOVA_ENABLE_PASSWORD_SIGNIN` unset or set it to anything other than `true`. Do not set it to `true` until the founder account and first organisation have been securely provisioned, the trusted production origin has been verified, and account recovery/release gates have been reviewed. This flag does not create an account. Do not enable public sign-up as a workaround.
+
+The deployment still requires a tested founder-account provisioning path, account recovery, tenant-isolation tests, and production configuration before real customer data can be used.
 
 ## Cost policy
 
