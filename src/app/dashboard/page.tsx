@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { LeadsWorkspace } from "./leads-workspace";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +23,7 @@ export default async function DashboardPage() {
     return <Notice title="Workspace setup is incomplete">The database and authentication configuration must be verified before this dashboard can show business data. No sample metrics are displayed.</Notice>;
   }
 
+  const [{ auth }, { db }] = await Promise.all([import("@/lib/auth"), import("@/lib/db")]);
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
     return <Notice title="Sign-in is not enabled yet">This workspace is still an engineering preview. Public account creation and sign-in are not enabled, so lead records are not exposed here.</Notice>;
@@ -46,7 +45,7 @@ export default async function DashboardPage() {
     take: 100,
     select: { id: true, name: true, company: true, email: true, status: true, currency: true, estimatedValue: true, nextFollowUpAt: true, updatedAt: true },
   });
-  const totalValue = leads.reduce((sum, lead) => sum + (lead.status === "WON" ? Number(lead.estimatedValue ?? 0) : 0), 0);
+  const totalValue = leads.reduce((sum, lead) => sum + (lead.status === "WON" && lead.currency === "NGN" ? Number(lead.estimatedValue ?? 0) : 0), 0);
   const overdue = leads.filter((lead) => lead.nextFollowUpAt && lead.nextFollowUpAt.getTime() < Date.now() && lead.status !== "WON" && lead.status !== "LOST").length;
 
   return (
@@ -63,7 +62,7 @@ export default async function DashboardPage() {
       <section className="workspace-metrics" aria-label="Lead summary">
         <article><span>Total leads</span><strong>{leads.length}</strong><small>Latest 100 records</small></article>
         <article><span>Follow-ups overdue</span><strong>{overdue}</strong><small>Based on saved follow-up dates</small></article>
-        <article><span>Won value</span><strong>{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalValue)}</strong><small>Won leads only; NGN display</small></article>
+        <article><span>Won value</span><strong>{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalValue)}</strong><small>NGN won leads only; other currencies excluded</small></article>
       </section>
       <LeadsWorkspace organisationId={membership.organisationId} initialLeads={leads.map((lead) => ({ ...lead, estimatedValue: lead.estimatedValue === null ? null : String(lead.estimatedValue), nextFollowUpAt: lead.nextFollowUpAt?.toISOString() ?? null, updatedAt: lead.updatedAt.toISOString() }))} />
       <footer className="workspace-footer">Avenova Global · Engineering preview · Do not enter real customer data until release gates are complete.</footer>
