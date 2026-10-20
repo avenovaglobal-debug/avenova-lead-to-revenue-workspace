@@ -60,9 +60,9 @@ export default async function DashboardPage() {
         <p>Track real enquiries, their current status, and the next follow-up. Only records in your verified organisation are shown.</p>
       </section>
       <section className="workspace-metrics" aria-label="Lead summary">
-        <article><span>Total leads</span><strong>{leads.length}</strong><small>Latest 100 records</small></article>
-        <article><span>Follow-ups overdue</span><strong>{overdue}</strong><small>Based on saved follow-up dates</small></article>
-        <article><span>Won value</span><strong>{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalValue)}</strong><small>NGN won leads only; other currencies excluded</small></article>
+        <article><span>Leads loaded</span><strong>{leads.length}</strong><small>Latest 100 records only</small></article>
+        <article><span>Follow-ups overdue</span><strong>{overdue}</strong><small>Within the latest 100 records</small></article>
+        <article><span>Won value</span><strong>{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(totalValue)}</strong><small>Latest 100 records; NGN only</small></article>
       </section>
       <LeadsWorkspace organisationId={membership.organisationId} initialLeads={leads.map((lead) => ({ ...lead, estimatedValue: lead.estimatedValue === null ? null : String(lead.estimatedValue), nextFollowUpAt: lead.nextFollowUpAt?.toISOString() ?? null, updatedAt: lead.updatedAt.toISOString() }))} />
       <footer className="workspace-footer">Avenova Global · Engineering preview · Do not enter real customer data until release gates are complete.</footer>
