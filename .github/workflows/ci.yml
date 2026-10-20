@@ -49,7 +49,7 @@ jobs:
           retention-days: 7
       - run: npm run db:generate
       - name: Generate initial schema SQL for review
-        run: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > initial-schema.sql
+        run: npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script > initial-schema.sql
       - name: Apply reviewed migrations to ephemeral PostgreSQL
         run: npm run db:deploy
       - name: Verify critical tenant constraints exist
