@@ -50,8 +50,8 @@ jobs:
       - run: npm run db:generate
       - name: Generate initial schema SQL for review
         run: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > initial-schema.sql
-      - name: Apply generated schema to ephemeral PostgreSQL
-        run: psql "postgresql://postgres:postgres@localhost:5432/avenova_workspace" -v ON_ERROR_STOP=1 -f initial-schema.sql
+      - name: Apply reviewed migrations to ephemeral PostgreSQL
+        run: npm run db:deploy
       - name: Verify critical tenant constraints exist
         run: |
           psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 <<'SQL'
