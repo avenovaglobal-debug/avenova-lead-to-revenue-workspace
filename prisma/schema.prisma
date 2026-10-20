@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum LeadStatus {
+  NEW
+  QUALIFIED
+  PROPOSAL
+  WON
+  LOST
+}
+
+enum ActivityType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  FOLLOW_UP
+  STATUS_CHANGE
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String       @default("")
+  email         String       @unique
+  emailVerified Boolean      @default(false)
+  image         String?
+  displayName   String?
+  sessions      Session[]
+  accounts      Account[]
+  memberships   Membership[]
+  createdLeads  Lead[]       @relation("LeadCreatedBy")
+  activities    Activity[]   @relation("ActivityCreatedBy")
+  auditEvents   AuditEvent[] @relation("AuditActor")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+}
+
+model Organisation {
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  memberships Membership[]
+  leads       Lead[]
+  stages      PipelineStage[]
+  activities  Activity[]
+  auditEvents AuditEvent[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  userId         String
+  organisationId String
+  role           MembershipRole @default(MEMBER)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation   Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+
+  @@unique([userId, organisationId])
+  @@index([organisationId, role])
+}
+
+model PipelineStage {
+  id             String       @id @default(cuid())
+  organisationId String
+  name           String
+  order          Int
+  isClosed       Boolean      @default(false)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  leads          Lead[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([id, organisationId])
+  @@unique([organisationId, name])
+  @@unique([organisationId, order])
+  @@index([organisationId, order])
+}
+
+model Lead {
+  id               String         @id @default(cuid())
+  organisationId   String
+  createdById      String
+  stageId          String?
+  name             String
+  company          String?
+  email            String?
+  phone            String?
+  source           String?
+  estimatedValue   Decimal?       @db.Decimal(12, 2)
+  currency         String         @default("NGN")
+  status           LeadStatus     @default(NEW)
+  nextFollowUpAt   DateTime?
+  organisation     Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  createdBy        User           @relation("LeadCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  stage            PipelineStage? @relation(fields: [stageId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  activities       Activity[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([id, organisationId])
+  @@index([organisationId, status, updatedAt])
+  @@index([organisationId, nextFollowUpAt])
+  @@index([organisationId, stageId])
+}
+
+model Activity {
+  id             String       @id @default(cuid())
+  organisationId String
+  leadId         String
+  createdById    String
+  type           ActivityType
+  body           String
+  occurredAt     DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  lead           Lead         @relation(fields: [leadId, organisationId], references: [id, organisationId], onDelete: Cascade)
+  createdBy      User         @relation("ActivityCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt      DateTime     @default(now())
+
+  @@index([organisationId, leadId, occurredAt])
+}
+
+model AuditEvent {
+  id             String       @id @default(cuid())
+  organisationId String
+  actorUserId    String
+  action         String
+  entityType     String
+  entityId       String
+  metadata       Json?
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  actor          User         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  createdAt      DateTime     @default(now())
+
+  @@index([organisationId, createdAt])
+  @@index([organisationId, entityType, entityId])
+}

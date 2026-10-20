@@ -10,7 +10,7 @@ Avenova Global is an independent initiative and is not yet legally registered. T
 - PostgreSQL + Prisma
 - Zod validation
 - Vitest unit tests and Playwright end-to-end tests
-- Authentication provider: not selected yet
+- Better Auth authentication foundation with server-verified sessions; public sign-up remains disabled
 
 ## Security release gates
 
@@ -24,6 +24,10 @@ Do not deploy with customer data until all of the following are implemented and 
 6. Automated typecheck, unit/integration tests, production build, and end-to-end tests.
 
 Never trust an organisation ID supplied by the browser without verifying membership server-side. Do not create public lead CRUD routes before authentication is implemented.
+
+## Authentication implementation plan
+
+The current Better Auth foundation, schema-preservation constraints, remaining security tests, and release gates are documented in [`docs/AUTHENTICATION-AND-TENANT-ISOLATION.md`](docs/AUTHENTICATION-AND-TENANT-ISOLATION.md). Session verification is implemented on the feature branch, but migrations, account recovery, tenant-isolation tests, and production configuration remain incomplete.
 
 ## Cost policy
 
@@ -45,4 +49,4 @@ Requires Node.js 20+ and PostgreSQL.
 6. Run `npm run typecheck` and `npm test`.
 7. Run `npm run dev` to start the preview.
 
-The engineering preview is not a live customer service. Authentication, complete CRUD routes, production migrations, deployment, billing, integrations, and operational backups remain incomplete.
+The engineering preview is not a live customer service. Public registration, account recovery, reviewed migrations, complete CRUD routes, tenant-isolation tests, deployment, billing, integrations, and operational backups remain incomplete.
