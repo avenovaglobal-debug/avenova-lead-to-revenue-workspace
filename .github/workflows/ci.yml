@@ -127,3 +127,16 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  dependency-security:
+    name: Dependency security gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies for audit
+        run: npm install --ignore-scripts
+      - name: Enforce dependency vulnerability threshold
+        run: npm audit --audit-level=high
